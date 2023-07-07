@@ -1,0 +1,7 @@
+.GIT/
+Dockerfile
+README.md
+venv/
+.idea/
+__pycach__/
+.env

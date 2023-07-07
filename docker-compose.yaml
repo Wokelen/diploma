@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: sermalenk/skypro-front:lesson-38
+    restart: always
+    ports:
+        - "80:80"
+    depends_on:
+      - api
+
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python manage.py runbot
+
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python ./manage.py migrate"
+
+  db:
+    image: postgres:15.0
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    restart: always
+    ports:
+    - "5445:5432"
+    healthcheck:
+      test: pg_isready -U ${DB_USER} -d ${DB_NAME}
+      timeout: 3s
+      interval: 4s
+      retries: 10
+
+volumes:
+  postgres_data:

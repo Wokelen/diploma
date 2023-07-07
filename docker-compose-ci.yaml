@@ -1,0 +1,74 @@
+---
+version: "3.9"
+
+services:
+
+  frontend:
+    image: sermalenk/skypro-front:lesson-38
+    container_name: frontend
+    ports:
+        - "80:80"
+    depends_on:
+        - api
+
+  api:
+    image: serasorb/todo:dipl
+    container_name: api
+    command: python manage.py runserver 0.0.0.0:8000
+#    ports:
+#      - "8000:8000"
+    volumes:
+      - /home/deploy/todolist/django_static:/todolist/django_static
+      - /home/deploy/todolist/django_media:/todolist/django_media
+      - /home/deploy/todolist/.env:/todolist/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+  bot:
+    image: serasorb/todo:dipl
+    container_name: bot
+    command: python manage.py runbot
+    volumes:
+      - /home/deploy/todolist/.env:/todolist/.env
+    environment:
+      TG_TOKEN: ${TG_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+
+  migrations:
+    image: serasorb/todo:dipl
+    container_name: migrations
+    volumes:
+      - /home/yury/SkyPro/Home_Work/34/todolist/.env:/todolist/.env
+#    env_file:
+#      - ./.env:todolist/.env
+    command: python manage.py migrate
+#      - python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('${SUPERUSER_USERNAME}', '${SUPERUSER_EMAIL}', '${SUPERUSER_PASSWORD}')"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+      image: postgres:15.0-alpine
+#      ports:
+#        - "5432"
+      environment:
+        POSTGRES_DB: todolist
+        POSTGRES_USER: ${DB_USER}
+        POSTGRES_PASSWORD: ${DB_PASSWORD}
+      restart: always
+      container_name: postgres
+      volumes:
+        - /home/deploy/todolist/postgresdata:/var/lib/postgresql/data
+      healthcheck:
+        test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+        interval: 5s
+        timeout: 5s
+        retries: 15
+...
